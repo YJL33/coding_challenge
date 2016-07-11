@@ -33,14 +33,6 @@ def rolling_med(transactions, output):
     2. cut edges - refer to cut_edge()
     3. return the median degree.
     """
-    class Logger(object):
-        def __init__(self, filename="Default.log"):
-            self.terminal = sys.stdout
-            self.log = open(filename, "a")
-
-        def write(self, message):
-            self.terminal.write(message)
-            self.log.write(message)
 
     class Node(object):
         """
@@ -61,14 +53,60 @@ def rolling_med(transactions, output):
         def __repr__(self):
             return '%s, %d' % (self.name, self.num_of_edges)
 
+    def validity(endtime, single_transaction):
+        """
+        Check whether this transaction is invalid or valid
+
+        Return: boolean value
+        """
+        transac_time = single_transaction[0]
+        return (endtime-60 <= transac_time)
+
+    def duplicity(endtime, graph, window, single_transaction, new_median):
+        """
+        Check whether this transaction will make a new_edge or not
+
+        Return: new endtime (if has any)
+        """
+        transac_time = single_transaction[0]
+        poi_a = single_transaction[1]
+        poi_b = single_transaction[2]
+
+        nodes_in_window = [nd.name for nd in graph]
+        index_a = index_b = 0
+
+        if poi_a in nodes_in_window and poi_b in nodes_in_window: 
+            index_a = nodes_in_window.index(poi_a)
+            index_b = nodes_in_window.index(poi_b)
+
+        duplicated = (poi_b in nodes_in_window and poi_a in graph[index_b].neighbors.keys())
+
+        if duplicated:
+
+            new_median = False          # need to find new median only when on very special case
+            the_other_transac_time = graph[index_b].neighbors[poi_a]-60
+
+            if transac_time > the_other_transac_time:             # if later than the earlier one...
+
+                for x in window:                                # ...update the window
+                    if x[1] == poi_a and x[2] == poi_b:
+                        assert (x[0] <= single_transaction[0])
+                        window.remove(x)                        # ...remove the earlier one
+                window.append(single_transaction)               # ...and add this new one
+
+                if transac_time > endtime:                      # if even later than endtime...
+                    new_median = True                           # ...need to cut some more edges
+
+            return max(transac_time, endtime)
+
+        return False
+
     def make_edge(endtime, graph, window, single_transaction, new_median):
         """
-        Construct a new edge
+        Construct a new edge for a valid transaction
 
-        0. First, check if this transaction is valid, duplicated, or not.
+        check whether there's a duplicated situation.
 
-        if valid:
-        (The ONLY situation we need to find a new median later)
         1. initialize two nodes (if necessary)
         2. construct the edge between two nodes
         3. calculate the median degree of vertex
@@ -79,69 +117,37 @@ def rolling_med(transactions, output):
         window: transaction queue in current window
         single_transaction
         """
+        new_median = True                       # Definitely need to find new median
 
         transac_time = single_transaction[0]
+        exp_time = transac_time + 60
+
         poi_a = single_transaction[1]
         poi_b = single_transaction[2]
-        exp_time = transac_time + 60
+        index_a = -1
+        index_b = -1
 
         nodes_in_window = [nd.name for nd in graph]
         # initialize the node if necessary
         if poi_a not in nodes_in_window:
             graph.append(Node(poi_a))
+            nodes_in_window.append(poi_a)       # need to update name list
         if poi_b not in nodes_in_window:
             graph.append(Node(poi_b))
+            nodes_in_window.append(poi_b)       # need to update name list
 
-        nodes_in_window = [nd.name for nd in graph]     # get nodes again
         index_a = nodes_in_window.index(poi_a)
         index_b = nodes_in_window.index(poi_b)
 
-        ## print "transac_time", type(transac_time), transac_time, "exp_time", type(exp_time), exp_time
+        window.append(single_transaction)
 
-        # Not valid
-        if (endtime - transac_time) > 60:
-            new_median = False
-            ##print "out of window, arrive too late"
-            ## print "endtime:", endtime, "transac_time", transac_time
-            return endtime
+        # construct the edge (update the info in each node)
+        graph[index_a].neighbors[poi_b] = exp_time
+        graph[index_a].num_of_edges += 1
+        graph[index_b].neighbors[poi_a] = exp_time
+        graph[index_b].num_of_edges += 1
 
-        # duplicated and newer
-        if poi_b in nodes_in_window and poi_a in graph[index_b].neighbors.keys():    # a & b are linked
-            new_median = False
-            ##print "duplicated transaction"
-            assert poi_a in nodes_in_window and poi_b in graph[index_a].neighbors.keys()
-            earlier_transac_time = graph[index_b].neighbors[poi_a]-60
-            if transac_time > earlier_transac_time:             # if this transaction happens later
-                ##print "Valid: update the graph"
-                ##temp = 0
-                for x in window:                                # update the window
-                    if x[1] == poi_a and x[2] == poi_b:
-                        assert (x[0] < single_transaction[0])
-                        ##print "remove:", x
-                        ##temp = x[0]
-                        window.remove(x)
-                window.append(single_transaction)
-                ##print "append:", single_transaction, "+", single_transaction[0]-temp, 'sec'
-
-                graph[index_b].neighbors[poi_a] = exp_time        # update the graph
-                graph[index_a].neighbors[poi_b] = exp_time
-
-            ##else: print "Invalid transaction (duplicated and outdated)"
-            return max(transac_time, endtime)
-
-        # Valid
-        ##print "valid transaction"
-        else:
-            new_median = True
-            window.append(single_transaction)
-
-            # construct the edge (update the info in each node)
-            graph[index_a].neighbors[poi_b] = exp_time
-            graph[index_a].num_of_edges += 1
-            graph[index_b].neighbors[poi_a] = exp_time
-            graph[index_b].num_of_edges += 1
-
-            return max(transac_time, endtime)
+        return max(transac_time, endtime)
 
     def cut_edge(endtime, graph, sorted_window):
         """
@@ -210,52 +216,62 @@ def rolling_med(transactions, output):
         return sorted_window
 
 ############################################################
-    sys.stdout = Logger(output)
+    ##sys.stdout = Logger(output)
 
-    graph = []              # lsit of node
-    window = []
+    graph = []              # list of node
+    window = []             # list of transaction
     endtime = transactions[0][0] + 60
-    new_median = True
     median = 0
     ##print "init:", endtime
 
     for i in xrange(len(transactions)):
+        new_median = True
         temp = endtime
-        #before adding edge(graph):", len(graph)
-        endtime = make_edge(endtime, graph, window, transactions[i], new_median)
-        ##print "after adding (graph):", len(graph)
 
-        assert endtime >= temp
-        if endtime > temp:
-            ##print "before cutting (graph):", len(graph)
-            window = cut_edge(endtime, graph, sorted(window))
-            ##print "after cutting (graph):", len(graph)
+        if not validity(endtime, transactions[i]):
+            ##print "invalid transaction"
+            output.write("%.2f\n" % (median))
 
-        # output the median of graph.values()
-        ##print [nd.num_of_edges for nd in graph]
-        if new_median:
-            median = numpy.median([nd.num_of_edges for nd in graph])
-            print "%.2f" % median
         else:
-            print median
+            dupe = duplicity(endtime, graph, window, transactions[i], new_median)
+
+            if dupe:
+                endtime = dupe
+                ##print "duplicated, endtime = ", endtime
+            else:
+                endtime = make_edge(endtime, graph, window, transactions[i], new_median)
+                ##print "new edge, endtime = ", endtime
+
+            if endtime > temp:
+                ##print "kick out somebody!"
+                window = cut_edge(endtime, graph, sorted(window))
+
+            if new_median:
+                median = numpy.median([nd.num_of_edges for nd in graph])
+                output.write("%.2f\n" % (median))
+            else:
+                output.write("%.2f\n" % (median))
+
+    return
 
 ############################################################
 if __name__ == '__main__':
-    FILE = open(sys.argv[1])            # txt file that containing records
-    OUTPUT = sys.argv[2]
+    INPUT = open(sys.argv[1], 'r')            # txt file that containing records
+    OUTPUT = open(sys.argv[2], 'w')
     TRANS_REC = []                      # transaction records
 
     # check this for time format:       https://www.w3.org/TR/NOTE-datetime
     # Here we use only "Seconds to reference time" as time unit.
-    first_line = eval(FILE.readline())
+    first_line = eval(INPUT.readline())
     ref_time = datetime.datetime.strptime(first_line['created_time'], '%Y-%m-%dT%H:%M:%SZ')
     TRANS_REC.append(sorted([0, first_line['actor'], first_line['target']]))
-    
 
-    for line in FILE:                   # Read them all
+    for line in INPUT:                   # Read them all
         newdict = eval(line)            # Since it's already in dictionary format, just read as dic
         trans_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
         newdict['created_time'] = (trans_time - ref_time).total_seconds()
         TRANS_REC.append(sorted(newdict.values()))
 
     rolling_med(TRANS_REC, OUTPUT)
+    INPUT.close()
+    OUTPUT.close()
