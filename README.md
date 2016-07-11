@@ -1,4 +1,4 @@
-##Quick Navigation
+##Table of Contents
 
 1. [Input and Output] (README.md#input-and-output)
 
@@ -14,7 +14,7 @@
 
 ##Input and Output
 
-[Back to Table of Contents] (README.md#quick-navigation)
+[Back to Table of Contents] (README.md#table-of-contents)
 
 Input: a text file containing bunch of transaction datas (with regulated format). 
 
@@ -22,7 +22,7 @@ Output: a text file named 'output.txt' in the 'venmo_output' directory.
 
 ##Solution
 
-[Back to Table of Contents] (README.md#quick-navigation)
+[Back to Table of Contents] (README.md#table-of-contents)
 
 The transaction is read as following format (with some trick):
 [ seconds, person_of_interest_a, person_of_interest_b]
@@ -32,57 +32,62 @@ Next, the order of "actor" and "target" is irrevalant in this challenge. (Transa
 
 class Node() is used to store:
 
-1. the name of node
-
-2. the neighbors(edges) of this node, and the corresponding expiring time of each neighbor (edge).
-
-3. the number of connected edge of this node
+	1. the name of node
+	
+	2. the neighbors(edges) of this node, and the corresponding expiring time of each neighbor (edge).
+	
+	3. the number of connected edge of this node
 
 Two lists are used:
 
-1. graph - to store nodes (and edges) that are not expired.
+	1. graph - to store nodes (and edges) that are not expired.
+	
+	2. window - to store "non-repetitive" transactions that are not expired yet.
 
-2. window - to store "non-repetitive" transactions that are not expired yet.
+It's actually quite straight forward:
+
+For each newly arrived transaction, steps in flow chart are illustrated as follows:
+
+	1. Check the transaction time and repetitivity to classify into four (green) status as follows. Note that for b. and c., no need to build new edge. But it's required to update expiring time in current edge.
+	
+	2. According to its status, following actions may be necessary.
+	    a. update the window:
+	        (1) kick expired transaction out of window, and 
+	        (2) cut expired edges in the graph: it took place right after window is updated.
+	    b. find new median: only if the graph has changed.
+	
+	    In some situation these actions are not needed.
+	
+	3. Output the median.
 
 Flow chart is shown as follows:
 
 ![flow-chart] (images/flowchart.png)
 
-Grey: unknown status
+	Grey: unknown status
+	
+	Green: status for sure (new edges are added now if needed).
+	
+	Blue: actions that take place only when necessary
+	
+	Orange: output the median
 
-Green: status for sure (new edges are added now if needed).
-
-Detailed status explanation:
-    expired: this transaction can be ignored.
-    repetitive but useless: this transaction is repetitive, but it's older than current existing one.
-    repetitive but useful: this transaction came later than current existing one.
-    new: this transaction never happened before, add this edge in graph.
-
+Detailed status (green) explanation:
 ![status] (images/status.png)
 
-Blue: actions that take place only when necessary
+    expired: this transaction can be ignored.
+    
+    repetitive but useless: this transaction is repetitive, but it's older than current existing one.
+    
+    repetitive but useful: this transaction came later than current existing one.
+    
+    new: this transaction never happened before, add this edge in graph.
 
-Orange: output the median
 
-It's actually quite straight forward.
-
-For each newly arrived transaction, steps in flow chart are illustrated as follows:
-
-1. Check the transaction time and repetitivity to classify into four (green) status as follows. Note that for b. and c., no need to build new edge. But it's required to update expiring time in current edge.
-
-2. According to its status, following actions may be necessary.
-    a. update the window:
-        (1) kick expired transaction out of window, and 
-        (2) cut expired edges in the graph: it took place right after window is updated.
-    b. find new median: only if the graph has changed.
-
-    In some situation these actions are not needed.
-
-3. Output the median.
 
 ##Analysis
 
-[Back to Table of Contents] (README.md#quick-navigation)
+[Back to Table of Contents] (README.md#table-of-contents)
 
 If there's n nodes in graph, m unique transactions in 60s-window, then:
 
@@ -114,7 +119,7 @@ The O(2*delta-m)*O(n) for update window includes:
 
 ##Required Packages
 
-[Back to Table of Contents] (README.md#quick-navigation)
+[Back to Table of Contents] (README.md#table-of-contents)
 
 Numpy costs O(nlogn) in time, and it can be improved into O(n) by implementing "median of medians algorithm". 
 
@@ -126,7 +131,7 @@ Numpy costs O(nlogn) in time, and it can be improved into O(n) by implementing "
 
 ##Repo directory structure
 
-[Back to Table of Contents] (README.md#quick-navigation)
+[Back to Table of Contents] (README.md#table-of-contents)
 
 Repo Structure
 
@@ -158,6 +163,8 @@ Repo Structure
             			  └── output.txt
 
 ##Future Work
+
+[Back to Table of Contents] (README.md#table-of-contents)
 
 According to [here] (https://github.com/numpy/numpy/issues/1811), Numpy uses quicksort which is O(nlogn) on average.
 
