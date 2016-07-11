@@ -1,4 +1,4 @@
-Quick Navigation
+##Quick Navigation
 
 1. [Input and Output] (README.md#input-and-output)
 

@@ -28,10 +28,11 @@ def rolling_med(transactions, output):
     window: a queue to record transactions in the rolling window.
 
     For each transaction:
-    1. build edge - refer to make_edge()
-    2. update the transaction window
-    2. cut edges - refer to cut_edge()
-    3. return the median degree.
+    1. check its validity
+    2. check its duplicity
+    3. update the graph (if necessary)
+    4. update the window (if necessary)
+    5. find the new median (or use the old one)
     """
 
     class Node(object):
@@ -83,7 +84,7 @@ def rolling_med(transactions, output):
 
         if duplicated:
 
-            new_median = False          # need to find new median only when on very special case
+            new_median = False          # need to find new median only when endtime is updated
             the_other_transac_time = graph[index_b].neighbors[poi_a]-60
 
             if transac_time > the_other_transac_time:             # if later than the earlier one...
@@ -121,13 +122,13 @@ def rolling_med(transactions, output):
 
         transac_time = single_transaction[0]
         exp_time = transac_time + 60
-
         poi_a = single_transaction[1]
         poi_b = single_transaction[2]
-        index_a = -1
-        index_b = -1
+        
+        index_a = index_b = 0
 
         nodes_in_window = [nd.name for nd in graph]
+
         # initialize the node if necessary
         if poi_a not in nodes_in_window:
             graph.append(Node(poi_a))
@@ -149,129 +150,105 @@ def rolling_med(transactions, output):
 
         return max(transac_time, endtime)
 
-    def cut_edge(endtime, graph, sorted_window):
+    def cut_edge(endtime, graph, sorted_window, new_median):
         """
         Cut these edges formed more than 1 min since the latest transaction time.
 
-        First, for each transactions should be removed, cut the corresponding edge:
-        1. fix poi_a
-        2. fix poi_b
+        In graph, fix both nodes involving in the expired transaction.
+        Check transactions one by one in window from oldest, and stop when still un-expire.
         
-        Next, remove expired transactions (by del)
+        In window, remove expired transactions (by del)
         """
         starttime = endtime - 60
-        cut = 0
+        cut = 0                                         # The index of transaction in window
 
-        name_list = []
+        # In graph
+        while sorted_window[cut][0] < starttime:        # for each transaction ...
 
-        while sorted_window[cut][0] < starttime:
+            new_median = True 
 
-            nodes_in_window = [nd.name for nd in graph]
-            ##print "current window:", starttime, " to ", endtime
-            ##print "need to go:", sorted_window[cut]
-
-            poi_a = sorted_window[cut][1]
+            poi_a = sorted_window[cut][1]               # get name of both nodes that involving in,
             poi_b = sorted_window[cut][2]
 
-            if poi_a not in name_list:
-                name_list.append(poi_a)
-            if poi_b not in name_list:
-                name_list.append(poi_b)
+            nodes_in_window = [nd.name for nd in graph] # from all we have in graph,
+            index_a = nodes_in_window.index(poi_a)      # get their index.
+            index_b = nodes_in_window.index(poi_b)
 
-            ##print poi_a
-            ##print poi_b
-
-            index_a = index_b = 0
-            if poi_a in nodes_in_window:
-                index_a = nodes_in_window.index(poi_a)
-            if poi_b in nodes_in_window:
-                index_b = nodes_in_window.index(poi_b)
-
-            ##print "cut who", graph[index_a], graph[index_a].neighbors, endtime
-            ##print "cut who", graph[index_b], graph[index_b].neighbors, endtime
-            #assert graph[index_a].neighbors[poi_b] < endtime
-
-            del graph[index_a].neighbors[poi_b]
-            graph[index_a].num_of_edges -= 1
+            del graph[index_a].neighbors[poi_b]         # (1) remove b from a's neighbor
+            graph[index_a].num_of_edges -= 1            # (2) a's number of connected edge - 1
             del graph[index_b].neighbors[poi_a]
             graph[index_b].num_of_edges -= 1
 
+            # If anyone of them is now having no neighbors => DELETE THEM
             if graph[index_a].num_of_edges == 0 and graph[index_b].num_of_edges == 0:
-                ##print "say goodbye to both of them"
                 del graph[max(index_a, index_b)]
                 del graph[min(index_a, index_b)]
             elif graph[index_a].num_of_edges == 0 or graph[index_b].num_of_edges == 0:
-                ##print "say goodbye to one of them"
                 if graph[index_a].num_of_edges == 0:
                     del graph[index_a]
                 else:
                     del graph[index_b]
-            ##print "cut!"
-            ##print "now", graph[index_a], graph[index_a].neighbors, endtime
-            ##print "now", graph[index_b], graph[index_b].neighbors, endtime
-            cut += 1
 
+            cut += 1                                    # Go to next expiring transaction
+
+        # In window
         sorted_window = [sorted_window[i] for i in xrange(len(sorted_window)) if i >= cut]
-        ##print "Window after cutting:", sorted_window
         return sorted_window
 
 ############################################################
-    ##sys.stdout = Logger(output)
 
     graph = []              # list of node
     window = []             # list of transaction
     endtime = transactions[0][0] + 60
     median = 0
-    ##print "init:", endtime
 
-    for i in xrange(len(transactions)):
+    for i in xrange(len(transactions)):                 # For each transaction ...
         new_median = True
         temp = endtime
 
-        if not validity(endtime, transactions[i]):
-            ##print "invalid transaction"
-            output.write("%.2f\n" % (median))
+        if not validity(endtime, transactions[i]):      # if it's expired ...
+            new_median = False                          # ... no need to find new_median.
 
-        else:
-            dupe = duplicity(endtime, graph, window, transactions[i], new_median)
+        else:                                           # if it's not expired ...
+            repeat = duplicity(endtime, graph, window, transactions[i], new_median)
 
-            if dupe:
-                endtime = dupe
-                ##print "duplicated, endtime = ", endtime
+            # The endtime of window could need renew, no matter it's repeated or not.
+            if repeat:
+                endtime = repeat
             else:
                 endtime = make_edge(endtime, graph, window, transactions[i], new_median)
-                ##print "new edge, endtime = ", endtime
 
+            # If the endtime has changed => update the window
             if endtime > temp:
-                ##print "kick out somebody!"
-                window = cut_edge(endtime, graph, sorted(window))
+                window = cut_edge(endtime, graph, sorted(window), new_median)
 
+            # If the graph has changed => find new median
             if new_median:
                 median = numpy.median([nd.num_of_edges for nd in graph])
-                output.write("%.2f\n" % (median))
-            else:
-                output.write("%.2f\n" % (median))
+            
+        output.write("%.2f\n" % (median))
 
     return
 
 ############################################################
 if __name__ == '__main__':
-    INPUT = open(sys.argv[1], 'r')            # txt file that containing records
+    INPUT = open(sys.argv[1], 'r')      # txt file that containing transaction records
     OUTPUT = open(sys.argv[2], 'w')
     TRANS_REC = []                      # transaction records
 
-    # check this for time format:       https://www.w3.org/TR/NOTE-datetime
-    # Here we use only "Seconds to reference time" as time unit.
-    first_line = eval(INPUT.readline())
-    ref_time = datetime.datetime.strptime(first_line['created_time'], '%Y-%m-%dT%H:%M:%SZ')
-    TRANS_REC.append(sorted([0, first_line['actor'], first_line['target']]))
-
-    for line in INPUT:                   # Read them all
+    ref_time = 0
+    
+    for line in INPUT:                  # Read them all
         newdict = eval(line)            # Since it's already in dictionary format, just read as dic
-        trans_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
-        newdict['created_time'] = (trans_time - ref_time).total_seconds()
-        TRANS_REC.append(sorted(newdict.values()))
+        if not TRANS_REC:
+            ref_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
+            TRANS_REC.append(sorted([0, newdict['actor'], newdict['target']]))
+        else:
+            trans_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
+            newdict['created_time'] = (trans_time - ref_time).total_seconds()
+            TRANS_REC.append(sorted(newdict.values()))
 
     rolling_med(TRANS_REC, OUTPUT)
+
     INPUT.close()
     OUTPUT.close()
