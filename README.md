@@ -1,16 +1,33 @@
 ##Table of Contents
 
-1. [Input and Output] (README.md#input-and-output)
+1. [Challenge Summary] (README.md#challenge summary)
 
-2. [Solution] (README.md#solution)
+2. [Input and Output] (README.md#input-and-output)
 
-3. [Analysis] (README.md#analysis)
+3. [Data Structure] (README.md#data-structure)
 
-4. [Required Packages] (README.md#required-packages)
+4. [Solution] (README.md#solution)
 
-5. [Repo directory structure] (README.md#repo-directory-structure)
+5. [Analysis] (README.md#analysis)
 
-6. [Future Work] (README.md#futurework)
+6. [System and Required Packages] (README.md#system-and-required-packages)
+
+7. [Repo directory structure] (README.md#repo-directory-structure)
+
+8. [Future Work] (README.md#future-work)
+
+##Challenge Summary
+
+[Back to Table of Contents] (README.md#table-of-contents)
+
+This challenge requires you to:
+
+- Use Venmo payments that stream in to build a graph of users and their relationship with one another.
+
+- Calculate the median degree of a vertex in a graph and update this each time a new Venmo payment appears. You will be calculating the median degree across a 60-second sliding window.
+
+The vertices on the graph represent Venmo users and whenever one user pays another user, an edge is formed between the two users.
+
 
 ##Input and Output
 
@@ -20,15 +37,17 @@ Input: a text file containing bunch of transaction datas (with regulated format)
 
 Output: a text file named 'output.txt' in the 'venmo_output' directory.
 
-##Solution
+##Data Structure
 
 [Back to Table of Contents] (README.md#table-of-contents)
 
-The transaction is read as following format (with some trick):
-[ seconds, person_of_interest_a, person_of_interest_b]
+If following correct format, each transaction will be read as follows:
 
-With reference time (e.g. time of first transaction), the 'created_time' can be converted into "seconds to reference time".
-Next, the order of "actor" and "target" is irrevalant in this challenge. (Transaction from a to b and from b to a is the same.) So we sort them here to avoid "a-b" <-> "b-a" problem.
+<b>[seconds, person_of_interest_a, person_of_interest_b]</b>
+
+    seconds: With any reference time (e.g. time of first transaction), the 'created_time' can be converted into "seconds to reference time".
+
+    person_of_interest: The order of "actor" and "target" is irrevalant in this challenge. (Transaction from a to b and from b to a is the same.) So we sort them here to avoid "a-b" <-> "b-a" problem.
 
 class Node() is used to store:
 
@@ -43,6 +62,10 @@ Two lists are used:
 	1. graph - to store nodes (and edges) that are not expired.
 	
 	2. window - to store "non-repetitive" transactions that are not expired yet.
+
+##Solution
+
+[Back to Table of Contents] (README.md#table-of-contents)
 
 It's actually quite straight forward:
 
@@ -105,23 +128,25 @@ O(m) + O(n)
 
 <b>Time complexity:</b>
 
-Consider the worst case
+Consider the worst case, if number of expired transactions = d:
 
-O(n) + O(n) + O(2*delta-m)*O(n) + O(nlogn)
+Overall = O(n) + O(n) + O(2d)*O(n) + O(nlogn)
 
 (find duplicity + comprare repetition + update window + find new median)
 
-The O(2*delta-m)*O(n) for update window includes:
+The O(2d)*O(n) for update window includes:
 
-    1. Kick out expired transactions, number = delta-m
-    2. Fix nodes that involved in expired transactions, number of nodes = 2*(delta-m). It's from O(1) to O(n) to get a key and delete it in python. Worst case: O(2*delta-m)*O(n)
+    1. Kick out expired transactions, number = d
+    2. Fix nodes that involved in expired transactions, number of nodes = 2d. It's from O(1) to O(n) to get a key and delete it in python. Worst case: O(2d)*O(n)
+
+The worst case hardly happen. We can safely draw a O(nlogn) time complexity.
 
 
-##Required Packages
+##System and Required Packages
 
 [Back to Table of Contents] (README.md#table-of-contents)
 
-Numpy costs O(nlogn) in time, and it can be improved into O(n) by implementing "median of medians algorithm". 
+Developed on Python 2.7.11
 
     sys - for file reading and writing.
 
@@ -172,6 +197,6 @@ It can be improved into O(n) if we apply selection sort.
 
 Based on selection sort, ["median of medians algorithm"] (https://en.wikipedia.org/wiki/Median_of_medians) is optimal, having worst-case linear time complexity for selecting the kth largest element.
 
-A naive implement is under src/median_of_medians.py, however, it's not completed yet.
+A naive implement is under src/median_of_medians.py, however, it's needs further fine-tuning.
 
 

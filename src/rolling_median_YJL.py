@@ -16,6 +16,29 @@ import sys
 import datetime
 import numpy
 
+def check_format(dct):
+    
+    #check this line has valid format or not
+    
+    validity = False
+    checker_dict = (type(dct) is dict) and (dct != {})
+    checker_time = checker_actor = checker_target = False
+    if checker_dict:
+        try:
+            t = datetime.datetime.strptime(dct['created_time'], '%Y-%m-%dT%H:%M:%SZ')
+            a = dct['actor']
+            b = dct['target']
+        except ValueError:
+            t = a = b = False
+        except KeyError:
+            t = a = b = False
+
+        checker_time = (type(t) is datetime.datetime)
+        checker_actor = (type(a) is str)
+        checker_target = (type(b) is str)
+
+    return (checker_dict and checker_time and checker_actor and checker_target)
+
 def rolling_med(transactions, output):
     """
     Input:
@@ -239,14 +262,23 @@ if __name__ == '__main__':
     ref_time = 0
     
     for line in INPUT:                  # Read them all
-        newdict = eval(line)            # Since it's already in dictionary format, just read as dic
-        if not TRANS_REC:
-            ref_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
-            TRANS_REC.append(sorted([0, newdict['actor'], newdict['target']]))
-        else:
-            trans_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
-            newdict['created_time'] = (trans_time - ref_time).total_seconds()
-            TRANS_REC.append(sorted(newdict.values()))
+        newdict = {}
+        try:
+            newdict = eval(line)        # Since it's already in dictionary format, just read as dic
+            if check_format(newdict):
+                if not TRANS_REC:
+                    ref_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
+                    TRANS_REC.append(sorted([0, newdict['actor'], newdict['target']]))
+                else:
+                    trans_time = datetime.datetime.strptime(newdict['created_time'], '%Y-%m-%dT%H:%M:%SZ')
+                    newdict['created_time'] = (trans_time - ref_time).total_seconds()
+                    TRANS_REC.append(sorted(newdict.values()))
+            else:
+                print "incorrect time/poi :", line
+        except SyntaxError:
+            print "incorrect line format: (SyntaxError)", line
+        except NameError:
+            print "incorrect line format: (NameError)", line
 
     rolling_med(TRANS_REC, OUTPUT)
 
