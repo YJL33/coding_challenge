@@ -195,9 +195,9 @@ Repo Structure
 
 According to [here] (https://github.com/numpy/numpy/issues/1811), Numpy uses quicksort which is O(nlogn) on average.
 
-It can be improved into O(n) if we apply selection sort.
+It can be improved into O(n) if we apply "median of medians algorithm".
 
-Based on selection sort, ["median of medians algorithm"] (https://en.wikipedia.org/wiki/Median_of_medians) is optimal, having worst-case linear time complexity for selecting the kth largest element.
+Based on quickselect algorithm, ["median of medians algorithm"] (https://en.wikipedia.org/wiki/Median_of_medians) is optimal, having worst-case linear time complexity for selecting the kth largest element.
 
 A naive implement is under src/median_of_medians.py, however, it's needs further fine-tuning.
 
