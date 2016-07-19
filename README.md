@@ -128,25 +128,27 @@ O(m) + O(n)
 
 <b>Time complexity:</b>
 
-Consider the worst case, if number of expired transactions = d:
+Consider the worst case, if number of expired transactions = d, and each node has k neighbors in average:
 
-Overall = O(n) + O(n) + O(2d)*O(n) + O(nlogn)
+Overall = O(1) + O(1) + O(2d)*O(k) + O(nlogn)
 
-(find duplicity + comprare repetition + update window + find new median)
+(search to find duplicity + search to comprare repetition time + update window + find new median)
 
-The O(2d)*O(n) for update window includes:
+The O(2d)*O(k) for update window includes:
 
     1. Kick out expired transactions, number = d
-    2. Fix nodes that involved in expired transactions, number of nodes = 2d. It's from O(1) to O(n) to get a key and delete it in python. Worst case: O(2d)*O(n)
+    2. Fix nodes that involved in expired transactions, number of nodes = 2d. It's O(k) to delete item in python. Worst case: O(2d)*O(k)
 
 The worst case hardly happen. We can safely draw a O(nlogn) time complexity.
+
+Ref: [here] (https://wiki.python.org/moin/TimeComplexity)
 
 
 ##System and Required Packages
 
 [Back to Table of Contents] (README.md#table-of-contents)
 
-Developed on Python 2.7.11
+Developed with Python 2.7.11
 
     sys - for file reading and writing.
 
