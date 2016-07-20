@@ -130,9 +130,9 @@ O(m) + O(n)
 
 Consider the worst case, if number of expired transactions = d, and each node has k neighbors in average:
 
-Overall = O(1) + O(1) + O(2d)*O(k) + O(nlogn)
+Overall = O(n)*O(1) + O(n)*O(1) + O(2d)*O(k) + O(nlogn)
 
-(search to find duplicity + search to comprare repetition time + update window + find new median)
+(get node list => search to find duplicity + get node list => search to comprare repetition time + update window + find new median)
 
 The O(2d)*O(k) for update window includes:
 
