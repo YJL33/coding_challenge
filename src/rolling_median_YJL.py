@@ -16,6 +16,25 @@ import sys
 import datetime
 import numpy
 
+class Node(object):
+    """
+    Class of a Node
+
+    For each node, record its:
+    0. name (person of interest)
+    1. number of connected edges
+    2. counterparts that connected to
+    3. expiring time of each edge
+    4. expiring time of itself
+    """
+    def __init__(self, node):
+        self.name = node
+        self.neighbors = {}     # key = name of neighbors, value = expiring time
+        self.num_of_edges = 0   # number of connected edges
+
+    def __repr__(self):
+        return '%s, %d' % (self.name, self.num_of_edges)
+
 def check_format(dct):
     
     #check this line has valid format or not
@@ -57,25 +76,6 @@ def rolling_med(transactions, output):
     4. update the window (if necessary)
     5. find the new median (or use the old one)
     """
-
-    class Node(object):
-        """
-        Class of a Node
-
-        For each node, record its:
-        0. name (person of interest)
-        1. number of connected edges
-        2. counterparts that connected to
-        3. expiring time of each edge
-        4. expiring time of itself
-        """
-        def __init__(self, node):
-            self.name = node
-            self.neighbors = {}     # key = name of neighbors, value = expiring time
-            self.num_of_edges = 0   # number of connected edges
-
-        def __repr__(self):
-            return '%s, %d' % (self.name, self.num_of_edges)
 
     def validity(endtime, single_transaction):
         """
@@ -163,7 +163,14 @@ def rolling_med(transactions, output):
         index_a = nodes_in_window.index(poi_a)
         index_b = nodes_in_window.index(poi_b)
 
-        window.append(single_transaction)
+        # insert i at the correct index
+        if window:
+            index = len(window)
+            while transac_time < window[index-1][0] and index >= 0:
+                index -= 1
+            window.insert(index,single_transaction)
+        else:
+            window.append(single_transaction)
 
         # construct the edge (update the info in each node)
         graph[index_a].neighbors[poi_b] = exp_time
@@ -218,7 +225,6 @@ def rolling_med(transactions, output):
         sorted_window = [sorted_window[i] for i in xrange(len(sorted_window)) if i >= cut]
         return sorted_window
 
-############################################################
 
     graph = []              # list of node
     window = []             # list of transaction
@@ -243,7 +249,8 @@ def rolling_med(transactions, output):
 
             # If the endtime has changed => update the window
             if endtime > temp:
-                window = cut_edge(endtime, graph, sorted(window), new_median)
+                # Here the window is sorted already
+                window = cut_edge(endtime, graph, window, new_median)
 
             # If the graph has changed => find new median
             if new_median:
@@ -260,7 +267,7 @@ if __name__ == '__main__':
     TRANS_REC = []                      # transaction records
 
     ref_time = 0
-    
+
     for line in INPUT:                  # Read them all
         newdict = {}
         try:
